@@ -1,0 +1,72 @@
+gene,cancer_type,mutation_freq,cnv_amp_freq,cnv_del_freq,total_alteration_freq,prognostic_associated
+EGFR,NSCLC,0.15,0.22,0.03,0.35,True
+EGFR,Breast Cancer,0.03,0.08,0.02,0.12,False
+EGFR,Gastric Cancer,0.05,0.12,0.03,0.18,False
+EGFR,Pancreatic Cancer,0.02,0.10,0.02,0.13,False
+EGFR,Colorectal Cancer,0.08,0.18,0.02,0.25,True
+EGFR,Ovarian Cancer,0.02,0.05,0.03,0.09,False
+ERBB2,NSCLC,0.03,0.05,0.01,0.08,False
+ERBB2,Breast Cancer,0.05,0.25,0.02,0.28,True
+ERBB2,Gastric Cancer,0.08,0.22,0.02,0.28,True
+ERBB2,Pancreatic Cancer,0.02,0.03,0.01,0.05,False
+ERBB2,Colorectal Cancer,0.04,0.10,0.02,0.14,False
+ERBB2,Ovarian Cancer,0.03,0.08,0.02,0.11,False
+CLDN18,NSCLC,0.01,0.02,0.01,0.03,False
+CLDN18,Breast Cancer,0.01,0.02,0.01,0.03,False
+CLDN18,Gastric Cancer,0.02,0.08,0.01,0.10,True
+CLDN18,Pancreatic Cancer,0.01,0.05,0.01,0.06,False
+CLDN18,Colorectal Cancer,0.01,0.02,0.01,0.03,False
+CLDN18,Ovarian Cancer,0.01,0.03,0.01,0.04,False
+MUC1,NSCLC,0.02,0.08,0.02,0.10,False
+MUC1,Breast Cancer,0.03,0.12,0.02,0.15,True
+MUC1,Gastric Cancer,0.02,0.05,0.02,0.08,False
+MUC1,Pancreatic Cancer,0.02,0.10,0.02,0.12,False
+MUC1,Colorectal Cancer,0.02,0.08,0.02,0.10,False
+MUC1,Ovarian Cancer,0.03,0.15,0.02,0.18,True
+BRCA1,NSCLC,0.03,0.01,0.05,0.08,False
+BRCA1,Breast Cancer,0.08,0.02,0.12,0.18,True
+BRCA1,Gastric Cancer,0.03,0.01,0.05,0.08,False
+BRCA1,Pancreatic Cancer,0.04,0.01,0.05,0.09,False
+BRCA1,Colorectal Cancer,0.03,0.01,0.05,0.08,False
+BRCA1,Ovarian Cancer,0.15,0.02,0.15,0.25,True
+KRAS,NSCLC,0.30,0.05,0.01,0.32,True
+KRAS,Breast Cancer,0.02,0.04,0.01,0.06,False
+KRAS,Gastric Cancer,0.10,0.05,0.02,0.15,False
+KRAS,Pancreatic Cancer,0.90,0.05,0.01,0.91,True
+KRAS,Colorectal Cancer,0.45,0.08,0.02,0.48,True
+KRAS,Ovarian Cancer,0.05,0.05,0.02,0.10,False
+TP53,NSCLC,0.55,0.02,0.08,0.58,True
+TP53,Breast Cancer,0.35,0.02,0.10,0.42,True
+TP53,Gastric Cancer,0.45,0.03,0.10,0.52,True
+TP53,Ovarian Cancer,0.95,0.02,0.05,0.96,True
+TP53,Colorectal Cancer,0.60,0.02,0.08,0.65,True
+CD274,NSCLC,0.02,0.15,0.02,0.17,False
+CD274,Breast Cancer,0.02,0.10,0.02,0.12,False
+CD274,Gastric Cancer,0.03,0.12,0.02,0.15,False
+VEGFA,NSCLC,0.01,0.10,0.02,0.12,False
+VEGFA,Breast Cancer,0.01,0.08,0.02,0.10,False
+VEGFA,Gastric Cancer,0.02,0.08,0.03,0.11,False
+MTOR,NSCLC,0.05,0.08,0.02,0.13,False
+MTOR,Breast Cancer,0.06,0.12,0.02,0.17,False
+MTOR,Gastric Cancer,0.04,0.08,0.03,0.13,False
+PIK3CA,NSCLC,0.08,0.12,0.02,0.19,True
+PIK3CA,Breast Cancer,0.30,0.15,0.03,0.40,True
+PIK3CA,Gastric Cancer,0.12,0.10,0.03,0.22,True
+PIK3CA,Colorectal Cancer,0.18,0.10,0.03,0.28,True
+ALK,NSCLC,0.05,0.08,0.01,0.12,True
+ALK,Breast Cancer,0.01,0.02,0.01,0.03,False
+ALK,Gastric Cancer,0.01,0.02,0.01,0.03,False
+ROS1,NSCLC,0.02,0.05,0.01,0.07,True
+ROS1,Breast Cancer,0.01,0.01,0.01,0.02,False
+ROS1,Gastric Cancer,0.01,0.01,0.01,0.02,False
+MET,NSCLC,0.08,0.15,0.01,0.22,True
+MET,Breast Cancer,0.02,0.05,0.02,0.08,False
+MET,Gastric Cancer,0.05,0.12,0.02,0.17,True
+BRAF,NSCLC,0.08,0.02,0.02,0.10,True
+BRAF,Breast Cancer,0.03,0.03,0.02,0.07,False
+BRAF,Gastric Cancer,0.03,0.02,0.02,0.06,False
+BRAF,Colorectal Cancer,0.12,0.03,0.02,0.15,True
+BRAF,Melanoma,0.50,0.03,0.02,0.52,True
+FGFR2,NSCLC,0.03,0.05,0.02,0.08,False
+FGFR2,Breast Cancer,0.03,0.10,0.02,0.13,True
+FGFR2,Gastric Cancer,0.05,0.12,0.02,0.17,True

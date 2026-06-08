@@ -1,0 +1,62 @@
+gene,cancer_type,median_tpm_tumor,median_tpm_normal,log2fc_tumor_normal,overexpression_category,tumor_normal_diff_category,tissue_specificity
+EGFR,NSCLC,85.2,12.5,2.77,high,significant,high
+EGFR,Breast Cancer,18.4,8.2,1.17,moderate,moderate,high
+EGFR,Gastric Cancer,22.1,7.8,1.50,moderate,moderate,high
+EGFR,Pancreatic Cancer,15.8,6.5,1.28,moderate,moderate,high
+EGFR,Colorectal Cancer,45.3,9.2,2.30,high,significant,high
+EGFR,Ovarian Cancer,12.5,5.8,1.11,moderate,moderate,high
+ERBB2,NSCLC,8.2,5.1,0.68,low,none,moderate
+ERBB2,Breast Cancer,95.1,8.5,3.48,high,significant,high
+ERBB2,Gastric Cancer,42.3,6.8,2.64,high,significant,high
+ERBB2,Pancreatic Cancer,5.5,4.2,0.39,low,none,moderate
+ERBB2,Colorectal Cancer,15.8,5.5,1.52,moderate,moderate,moderate
+ERBB2,Ovarian Cancer,22.1,4.8,2.20,high,significant,moderate
+CLDN18,NSCLC,2.1,1.5,0.49,low,none,high
+CLDN18,Breast Cancer,3.5,2.8,0.32,low,none,high
+CLDN18,Gastric Cancer,78.5,45.2,0.80,high,moderate,high
+CLDN18,Pancreatic Cancer,35.2,12.5,1.49,high,moderate,high
+CLDN18,Colorectal Cancer,5.8,4.2,0.47,low,none,high
+CLDN18,Ovarian Cancer,8.5,3.5,1.28,moderate,moderate,high
+MUC1,NSCLC,52.3,18.5,1.50,high,moderate,moderate
+MUC1,Breast Cancer,68.2,22.1,1.63,high,moderate,moderate
+MUC1,Gastric Cancer,45.8,28.5,0.68,moderate,moderate,moderate
+MUC1,Pancreatic Cancer,72.5,25.2,1.52,high,moderate,moderate
+MUC1,Colorectal Cancer,38.5,15.8,1.28,moderate,moderate,moderate
+MUC1,Ovarian Cancer,55.2,12.5,2.14,high,significant,moderate
+BRCA1,NSCLC,8.5,6.2,0.45,low,none,low
+BRCA1,Breast Cancer,6.2,8.5,-0.45,low,none,low
+BRCA1,Gastric Cancer,5.8,6.5,-0.16,low,none,low
+BRCA1,Pancreatic Cancer,7.2,6.8,0.08,low,none,low
+BRCA1,Colorectal Cancer,6.5,7.2,-0.15,low,none,low
+BRCA1,Ovarian Cancer,5.5,7.8,-0.50,low,none,low
+KRAS,NSCLC,55.8,15.2,1.88,high,moderate,low
+KRAS,Breast Cancer,22.5,10.8,1.06,moderate,moderate,low
+KRAS,Gastric Cancer,32.1,8.5,1.92,high,moderate,low
+KRAS,Pancreatic Cancer,68.2,12.5,2.45,high,significant,low
+KRAS,Colorectal Cancer,52.3,11.2,2.22,high,significant,low
+KRAS,Ovarian Cancer,18.5,7.5,1.30,moderate,moderate,low
+TP53,NSCLC,28.5,22.1,0.37,moderate,none,low
+TP53,Breast Cancer,35.2,28.5,0.30,moderate,none,low
+TP53,Gastric Cancer,32.1,25.8,0.32,moderate,none,low
+CD274,NSCLC,42.5,5.2,3.03,high,significant,high
+CD274,Breast Cancer,18.2,4.5,2.02,moderate,significant,high
+CD274,Gastric Cancer,25.8,3.8,2.76,high,significant,high
+CD274,Melanoma,52.1,6.5,3.00,high,significant,high
+VEGFA,NSCLC,35.2,18.5,0.93,moderate,moderate,low
+VEGFA,Breast Cancer,28.5,15.2,0.91,moderate,moderate,low
+VEGFA,Gastric Cancer,32.8,16.5,0.99,moderate,moderate,low
+MTOR,NSCLC,22.5,18.2,0.31,moderate,none,low
+MTOR,Breast Cancer,25.1,20.5,0.29,moderate,none,low
+MTOR,Gastric Cancer,20.8,17.5,0.25,moderate,none,low
+PIK3CA,NSCLC,18.5,15.2,0.28,moderate,none,low
+PIK3CA,Breast Cancer,35.2,22.1,0.67,moderate,moderate,low
+PIK3CA,Gastric Cancer,22.8,16.5,0.47,moderate,none,low
+ALK,NSCLC,8.5,2.1,2.02,moderate,significant,high
+ALK,Breast Cancer,1.5,1.8,-0.26,low,none,high
+ALK,Gastric Cancer,2.1,1.5,0.49,low,none,high
+ROS1,NSCLC,5.8,1.2,2.27,moderate,significant,high
+ROS1,Breast Cancer,1.2,1.5,-0.32,low,none,high
+ROS1,Gastric Cancer,1.8,1.3,0.47,low,none,high
+MET,NSCLC,42.5,8.2,2.37,high,significant,high
+MET,Breast Cancer,15.8,6.5,1.28,moderate,moderate,high
+MET,Gastric Cancer,32.1,7.2,2.16,high,significant,high
