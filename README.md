@@ -12,6 +12,7 @@
 - [Scoring Model](#scoring-model)
 - [Result Interpretation](#result-interpretation)
 - [Web App Usage](#web-app-usage)
+- [CLI Usage](#cli-usage)
 - [Project Architecture](#project-architecture)
 - [Maintenance Guide](#maintenance-guide)
 - [FAQ](#faq)
@@ -24,11 +25,23 @@
 # Install dependencies
 pip install -r requirements.txt
 
-# Launch the web app
+# CLI — quick assessment from command line
+python3.8 run.py --gene EGFR --disease NSCLC
+
+# Web app — interactive browser interface
 streamlit run app.py
 ```
 
-Then open `http://localhost:8501`, enter a gene symbol (e.g., `EGFR`) and a disease (e.g., `NSCLC`), and click "Generate Report".
+### CLI vs Web App
+
+| | CLI (`run.py`) | Web App (`app.py`) |
+|---|---|---|
+| **Interface** | Terminal | Browser (Streamlit) |
+| **Use case** | Batch evaluation, scripting, quick lookups | Interactive exploration, presentations |
+| **Output** | Prints summary to stdout + saves files | Interactive charts + download buttons |
+| **Best for** | Power users, automation | First-time users, demos |
+
+---
 
 ### Requirements
 
@@ -317,11 +330,100 @@ The radar chart shows each dimension as a percentage of its maximum score. A bal
 
 ---
 
+## CLI Usage
+
+The CLI tool (`run.py`) runs a complete target assessment from the command line and saves the report files locally.
+
+### Basic Syntax
+
+```bash
+python3.8 run.py --gene <GENE> --disease <DISEASE> [OPTIONS]
+```
+
+### Arguments
+
+| Argument | Short | Required | Description | Default |
+|----------|-------|----------|-------------|---------|
+| `--gene` | `-g` | Yes | HGNC gene symbol or common alias | — |
+| `--disease` | `-d` | Yes | Disease or cancer type name | — |
+| `--scenario` | `-s` | No | Assessment scenario | `general` |
+| `--modality` | `-m` | No | Drug modality of interest | `any` |
+| `--output-dir` | `-o` | No | Custom output root directory | `outputs/` |
+| `--quiet` | `-q` | No | Minimal output (scripting mode) | off |
+
+### Scenario Options
+
+| Value | Label | Use Case |
+|-------|-------|----------|
+| `general` | 通用评估 | Default, balanced weights |
+| `research` | 科研基金/SCI | Emphasizes literature & mechanism |
+| `drug_development` | 药物研发立项 | Emphasizes safety & modality fit |
+| `adc` | ADC/抗体靶点 | Emphasizes expression & tumor-normal differential |
+| `small_molecule` | 小分子靶点 | Emphasizes druggability & active compounds |
+
+### Modality Options
+
+`any`, `small_molecule`, `antibody`, `adc`, `protac`, `rna`
+
+### Output Files
+
+Each run generates three files in the output directory:
+
+```
+outputs/
+├── reports/
+│   ├── target_assessment_{GENE}_{DISEASE}_{timestamp}.md   # Markdown report
+│   └── target_assessment_{GENE}_{DISEASE}_{timestamp}.html # Styled HTML report
+└── tables/
+    └── evidence_{GENE}_{DISEASE}_{timestamp}.xlsx          # Excel evidence table
+                                                             #   Sheet 1: Evidence
+                                                             #   Sheet 2: Scores
+```
+
+### Examples
+
+```bash
+# Quick evaluation with minimal typing
+python3.8 run.py -g EGFR -d NSCLC
+
+# Evaluate an ADC target with the ADC-specific scenario
+python3.8 run.py --gene CLDN18 --disease "Gastric Cancer" --scenario adc
+
+# Save results to a custom directory
+python3.8 run.py -g BRCA1 -d "Ovarian Cancer" -s research -o ./my_results
+
+# Scripting mode — quiet output, just the file paths
+python3.8 run.py -g KRAS -d "Pancreatic Cancer" -q
+```
+
+### Terminal Output
+
+The CLI prints a summary to stdout including:
+- Gene info (symbol, full name, Ensembl ID)
+- Total score and grade
+- One-line recommendation
+- Per-dimension score bars (text-based)
+- Paths to the three generated files
+
+### Using in Shell Scripts
+
+```bash
+#!/bin/bash
+# Batch evaluate multiple targets
+for gene in EGFR ERBB2 CLDN18 KRAS BRCA1; do
+    python3.8 run.py -g "$gene" -d "NSCLC" -q
+    echo "---"
+done
+```
+
+---
+
 ## Project Architecture
 
 ```
 target_assessment/
 ├── app.py                         # Streamlit web application
+├── run.py                         # CLI tool (batch/scripting)
 ├── config.py                      # Weights, thresholds, API endpoints, gene aliases
 ├── requirements.txt               # Python dependencies
 ├── project.md                     # Full project plan (Chinese)
