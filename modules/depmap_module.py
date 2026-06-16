@@ -11,7 +11,7 @@ from typing import Optional
 
 import pandas as pd
 
-from config import PROCESSED_DIR
+from config import PROCESSED_DIR, resolve_disease_categories
 
 logger = logging.getLogger(__name__)
 
@@ -71,14 +71,27 @@ class DepMapModule:
             logger.info(f"DepMap: no data for {gene_symbol}")
             return self._empty_result()
 
-        # Try exact disease match
         match = None
-        for _, row in gene_rows.iterrows():
-            if row["primary_disease"].lower() == disease_lower:
-                match = row
-                break
 
-        # Try substring match
+        # Try category-based matching first
+        category_diseases = resolve_disease_categories(disease)
+        if category_diseases:
+            cat_rows = gene_rows[gene_rows["primary_disease"].isin(category_diseases)]
+            if not cat_rows.empty:
+                match = cat_rows.iloc[0]
+                logger.info(
+                    f"DepMap: category match for {gene_symbol}, "
+                    f"'{disease}' → {match['primary_disease']}"
+                )
+
+        # Try exact disease match (legacy)
+        if match is None:
+            for _, row in gene_rows.iterrows():
+                if row["primary_disease"].lower() == disease_lower:
+                    match = row
+                    break
+
+        # Try substring match (legacy)
         if match is None:
             for _, row in gene_rows.iterrows():
                 rd = row["primary_disease"].lower()

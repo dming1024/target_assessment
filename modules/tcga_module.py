@@ -11,7 +11,7 @@ from typing import Optional
 
 import pandas as pd
 
-from config import PROCESSED_DIR
+from config import PROCESSED_DIR, resolve_disease_categories
 
 logger = logging.getLogger(__name__)
 
@@ -83,12 +83,24 @@ class TCGAModule:
 
         cancer_col = "cancer_type" if "cancer_type" in df.columns else "primary_disease"
 
-        # Exact match
+        # Try category-based matching first
+        category_diseases = resolve_disease_categories(disease)
+        if category_diseases:
+            cat_rows = gene_rows[gene_rows[cancer_col].isin(category_diseases)]
+            if not cat_rows.empty:
+                row = cat_rows.iloc[0]
+                logger.info(
+                    f"TCGA: category match for {gene_symbol}, "
+                    f"'{disease}' → {row[cancer_col]}"
+                )
+                return row
+
+        # Exact match (legacy)
         for _, row in gene_rows.iterrows():
             if row[cancer_col].lower() == disease_lower:
                 return row
 
-        # Substring match
+        # Substring match (legacy)
         for _, row in gene_rows.iterrows():
             rd = row[cancer_col].lower()
             if disease_lower in rd or rd in disease_lower:

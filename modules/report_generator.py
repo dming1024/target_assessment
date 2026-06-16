@@ -461,9 +461,8 @@ class ReportGenerator:
         return df_evidence, df_scores
 
     def _md_to_html(self, md_text: str) -> str:
-        """Simple Markdown to HTML conversion with styling."""
-        # Basic conversion - can be enhanced with markdown library
-        import re
+        """Convert Markdown to HTML with styling using the markdown library."""
+        import markdown
 
         css = """
         <style>
@@ -483,40 +482,7 @@ class ReportGenerator:
         </style>
         """
 
-        # Convert tables
-        # Headers
-        md_text = re.sub(r'^\|(.+)\|\s*$\n\|[-| :]+\|\s*$\n', self._table_header_replace, md_text, flags=re.MULTILINE)
-        # Rows
-        md_text = re.sub(r'^\|(.+)\|\s*$', r'<tr><td>\1</td></tr>', md_text, flags=re.MULTILINE)
-        md_text = md_text.replace('</td></tr>\n<tr><td>', '</td></tr><tr><td>')
-        md_text = md_text.replace('<tr><td>', '<table><tr><th>', 1)
-        md_text = md_text.replace('</td></tr>', '</td></tr></table>')
-        # Fix th/td
-        md_text = md_text.replace('<tr><th>', '<tr><th>').replace('</td></tr>', '</td></tr>')
-        # Split cells
-        md_text = re.sub(r'<th>(.+?)</th>', lambda m: '<th>' + '</th><th>'.join(re.split(r'\s*\|\s*', m.group(1))) + '</th>', md_text)
-        md_text = re.sub(r'<td>(.+?)</td>', lambda m: '<td>' + '</td><td>'.join(re.split(r'\s*\|\s*', m.group(1))) + '</td>', md_text)
-
-        # Headers
-        md_text = re.sub(r'^### (.+)$', r'<h3>\1</h3>', md_text, flags=re.MULTILINE)
-        md_text = re.sub(r'^## (.+)$', r'<h2>\1</h2>', md_text, flags=re.MULTILINE)
-        md_text = re.sub(r'^# (.+)$', r'<h1>\1</h1>', md_text, flags=re.MULTILINE)
-
-        # Bold
-        md_text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', md_text)
-
-        # Blockquote
-        md_text = re.sub(r'^> (.+)$', r'<blockquote>\1</blockquote>', md_text, flags=re.MULTILINE)
-
-        # Lists
-        md_text = re.sub(r'^- (.+)$', r'<li>\1</li>', md_text, flags=re.MULTILINE)
-
-        # Horizontal rules
-        md_text = re.sub(r'^---$', r'<hr>', md_text, flags=re.MULTILINE)
-
-        # Paragraphs (double newlines)
-        md_text = re.sub(r'\n\n', r'</p><p>', md_text)
-        md_text = '<p>' + md_text + '</p>'
+        body = markdown.markdown(md_text, extensions=['extra'])
 
         html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -527,16 +493,10 @@ class ReportGenerator:
     {css}
 </head>
 <body>
-{md_text}
+{body}
 </body>
 </html>"""
         return html
-
-    def _table_header_replace(self, match):
-        """Replace markdown table header with HTML header row."""
-        header = match.group(1)
-        cells = [c.strip() for c in header.split('|')]
-        return '<table><tr>' + ''.join(f'<th>{c}</th>' for c in cells) + '</tr>\n'
 
     def save_markdown(self, markdown_text: str, output_path: str = None) -> str:
         """Save markdown report to file."""

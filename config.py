@@ -58,6 +58,307 @@ EFO_DISEASE_MAP = {
     "kidney cancer": "EFO_0000681",
 }
 
+# Disease category mapping — maps specific DepMap/TCGA disease names to broad categories.
+# Categories align with EFO_DISEASE_MAP where possible.
+DISEASE_CATEGORIES = {
+    "lung_cancer": [
+        "Non-Small Cell Lung Cancer",
+        "Lung Neuroendocrine Tumor",
+    ],
+    "breast_cancer": [
+        "Invasive Breast Carcinoma",
+        "Breast Ductal Carcinoma In Situ",
+        "Breast Neoplasm, NOS",
+    ],
+    "colorectal_cancer": [
+        "Colorectal Adenocarcinoma",
+    ],
+    "gastric_cancer": [
+        "Esophagogastric Adenocarcinoma",
+        "Esophageal Squamous Cell Carcinoma",
+    ],
+    "ovarian_cancer": [
+        "Ovarian Epithelial Tumor",
+        "Ovarian Cancer, Other",
+        "Ovarian Germ Cell Tumor",
+        "Sex Cord Stromal Tumor",
+    ],
+    "pancreatic_cancer": [
+        "Pancreatic Adenocarcinoma",
+        "Adenosquamous Carcinoma of the Pancreas",
+        "Pancreatic Neuroendocrine Tumor",
+    ],
+    "melanoma": [
+        "Melanoma",
+        "Ocular Melanoma",
+        "Mucosal Melanoma of the Vulva/Vagina",
+        "Cutaneous Squamous Cell Carcinoma",
+        "Merkel Cell Carcinoma",
+    ],
+    "leukemia": [
+        "Acute Myeloid Leukemia",
+        "Acute Leukemias of Ambiguous Lineage",
+        "B-Cell Acute Lymphoblastic Leukemia",
+        "T-Lymphoblastic Leukemia/Lymphoma",
+        "Myeloproliferative Neoplasms",
+    ],
+    "lymphoma": [
+        "Non-Hodgkin Lymphoma",
+        "Hodgkin Lymphoma",
+        "Mature B-Cell Neoplasms",
+        "Mature T and NK Neoplasms",
+    ],
+    "brain_cns": [
+        "Diffuse Glioma",
+        "Adult-Type Diffuse Glioma",
+        "Neuroblastoma",
+        "Embryonal Tumor",
+        "Meningothelial Tumor",
+        "Rhabdoid Cancer",
+        "Retinoblastoma",
+        "Chordoma",
+    ],
+    "head_neck": [
+        "Head and Neck Squamous Cell Carcinoma",
+        "Head and Neck Carcinoma, Other",
+        "Salivary Carcinoma",
+    ],
+    "liver_cancer": [
+        "Hepatocellular Carcinoma",
+        "Hepatoblastoma",
+        "Hepatocellular Carcinoma plus Intrahepatic Cholangiocarcinoma",
+    ],
+    "renal_cancer": [
+        "Renal Cell Carcinoma",
+        "Wilms' Tumor",
+    ],
+    "bladder_cancer": [
+        "Bladder Urothelial Carcinoma",
+        "Bladder Squamous Cell Carcinoma",
+        "Urethral Cancer",
+    ],
+    "prostate_cancer": [
+        "Prostate Adenocarcinoma",
+        "Prostate Neuroendocrine Carcinoma",
+        "Prostate Small Cell Carcinoma",
+    ],
+    "sarcoma": [
+        "Ewing Sarcoma",
+        "Osteosarcoma",
+        "Rhabdomyosarcoma",
+        "Liposarcoma",
+        "Leiomyosarcoma",
+        "Synovial Sarcoma",
+        "Chondrosarcoma",
+        "Fibrosarcoma",
+        "Clear Cell Sarcoma",
+        "Epithelioid Sarcoma",
+        "Myxofibrosarcoma",
+        "CIC-DUX4 Sarcoma",
+        "Alveolar Soft Part Sarcoma",
+        "Sarcoma, NOS",
+        "Undifferentiated Pleomorphic Sarcoma/Malignant Fibrous Histiocytoma/High-Grade Spindle Cell Sarcoma",
+        "Desmoid/Aggressive Fibromatosis",
+        "Dermatofibrosarcoma Protuberans",
+        "Nerve Sheath Tumor",
+        "Giant Cell Tumor of Bone",
+    ],
+    "thyroid_cancer": [
+        "Anaplastic Thyroid Cancer",
+        "Well-Differentiated Thyroid Cancer",
+        "Medullary Thyroid Cancer",
+        "Poorly Differentiated Thyroid Cancer",
+    ],
+    "cervical_cancer": [
+        "Cervical Squamous Cell Carcinoma",
+        "Cervical Adenocarcinoma",
+        "Mixed Cervical Carcinoma",
+        "Glassy Cell Carcinoma of the Cervix",
+        "Small Cell Carcinoma of the Cervix",
+        "Small Cell Neuroendocrine Carcinoma of the Cervix",
+        "Squamous Cell Carcinoma of the Vulva/Vagina",
+    ],
+    "endometrial_cancer": [
+        "Endometrial Carcinoma",
+        "Uterine Sarcoma/Mesenchymal",
+    ],
+    "mesothelioma": [
+        "Pleural Mesothelioma",
+    ],
+    "adrenal_cancer": [
+        "Adrenocortical Carcinoma",
+    ],
+    "germ_cell": [
+        "Non-Seminomatous Germ Cell Tumor",
+        "Extra Gonadal Germ Cell Tumor",
+    ],
+    "bile_duct": [
+        "Intraductal Papillary Neoplasm of the Bile Duct",
+        "Intracholecystic Papillary Neoplasm",
+        "Ampullary Carcinoma",
+    ],
+    "other": [
+        "Non-Cancerous",
+        "Other",
+        "Gestational Trophoblastic Disease",
+        "SMARCA4-deficient undifferentiated tumor",
+        "Hereditary Spherocytosis",
+        "Gastrointestinal Neuroendocrine Tumors",
+        "Gastrointestinal Stromal Tumor",
+        "Small Bowel Cancer",
+    ],
+}
+
+# Maps user-friendly disease name inputs to category keys above.
+CATEGORY_ALIASES = {
+    # Lung
+    "lung cancer": "lung_cancer",
+    "lung carcinoma": "lung_cancer",
+    "lung": "lung_cancer",
+    "nsclc": "lung_cancer",
+    "non-small cell lung cancer": "lung_cancer",
+    "non small cell lung cancer": "lung_cancer",
+    "sclc": "lung_cancer",
+    "small cell lung cancer": "lung_cancer",
+    "lung adenocarcinoma": "lung_cancer",
+    # Breast
+    "breast cancer": "breast_cancer",
+    "breast carcinoma": "breast_cancer",
+    "breast": "breast_cancer",
+    # Colorectal
+    "colorectal cancer": "colorectal_cancer",
+    "colorectal": "colorectal_cancer",
+    "colon cancer": "colorectal_cancer",
+    "colon": "colorectal_cancer",
+    "rectal cancer": "colorectal_cancer",
+    # Gastric / Esophageal
+    "gastric cancer": "gastric_cancer",
+    "gastric": "gastric_cancer",
+    "stomach cancer": "gastric_cancer",
+    "stomach": "gastric_cancer",
+    "esophageal cancer": "gastric_cancer",
+    "esophagus cancer": "gastric_cancer",
+    "esophagogastric": "gastric_cancer",
+    # Ovarian
+    "ovarian cancer": "ovarian_cancer",
+    "ovarian carcinoma": "ovarian_cancer",
+    "ovarian": "ovarian_cancer",
+    "ovary cancer": "ovarian_cancer",
+    # Pancreatic
+    "pancreatic cancer": "pancreatic_cancer",
+    "pancreatic adenocarcinoma": "pancreatic_cancer",
+    "pancreatic": "pancreatic_cancer",
+    "pancreas cancer": "pancreatic_cancer",
+    # Melanoma
+    "melanoma": "melanoma",
+    "skin melanoma": "melanoma",
+    "skin cancer": "melanoma",
+    "cutaneous melanoma": "melanoma",
+    # Leukemia
+    "leukemia": "leukemia",
+    "aml": "leukemia",
+    "acute myeloid leukemia": "leukemia",
+    "all": "leukemia",
+    "acute lymphoblastic leukemia": "leukemia",
+    # Lymphoma
+    "lymphoma": "lymphoma",
+    "non-hodgkin lymphoma": "lymphoma",
+    "hodgkin lymphoma": "lymphoma",
+    # Brain / CNS
+    "brain cancer": "brain_cns",
+    "brain tumor": "brain_cns",
+    "brain": "brain_cns",
+    "cns cancer": "brain_cns",
+    "glioma": "brain_cns",
+    "glioblastoma": "brain_cns",
+    "neuroblastoma": "brain_cns",
+    # Head and Neck
+    "head and neck cancer": "head_neck",
+    "head neck cancer": "head_neck",
+    "head and neck": "head_neck",
+    # Liver
+    "liver cancer": "liver_cancer",
+    "liver": "liver_cancer",
+    "hepatocellular carcinoma": "liver_cancer",
+    "hcc": "liver_cancer",
+    # Renal / Kidney
+    "renal cancer": "renal_cancer",
+    "renal cell carcinoma": "renal_cancer",
+    "kidney cancer": "renal_cancer",
+    "kidney": "renal_cancer",
+    # Bladder
+    "bladder cancer": "bladder_cancer",
+    "bladder": "bladder_cancer",
+    # Prostate
+    "prostate cancer": "prostate_cancer",
+    "prostate": "prostate_cancer",
+    # Sarcoma
+    "sarcoma": "sarcoma",
+    "bone cancer": "sarcoma",
+    "soft tissue sarcoma": "sarcoma",
+    "osteosarcoma": "sarcoma",
+    # Thyroid
+    "thyroid cancer": "thyroid_cancer",
+    "thyroid": "thyroid_cancer",
+    # Cervical
+    "cervical cancer": "cervical_cancer",
+    "cervical": "cervical_cancer",
+    "cervix cancer": "cervical_cancer",
+    # Endometrial / Uterine
+    "endometrial cancer": "endometrial_cancer",
+    "endometrial": "endometrial_cancer",
+    "uterine cancer": "endometrial_cancer",
+    "uterine": "endometrial_cancer",
+    "uterus cancer": "endometrial_cancer",
+    # Mesothelioma
+    "mesothelioma": "mesothelioma",
+    # Adrenal
+    "adrenal cancer": "adrenal_cancer",
+    "adrenocortical carcinoma": "adrenal_cancer",
+    "adrenal": "adrenal_cancer",
+    # Germ cell / Testicular
+    "germ cell tumor": "germ_cell",
+    "germ cell": "germ_cell",
+    "testicular cancer": "germ_cell",
+    "testicular": "germ_cell",
+    # Bile duct
+    "bile duct cancer": "bile_duct",
+    "bile duct": "bile_duct",
+    "cholangiocarcinoma": "bile_duct",
+}
+
+
+def resolve_disease_categories(disease: str) -> list:
+    """Resolve a user-supplied disease name to a list of specific DepMap/TCGA disease names.
+
+    Uses CATEGORY_ALIASES for substring matching against the user input.
+    Returns an empty list if no category match is found (caller should fall back
+    to legacy substring matching).
+    """
+    if not disease or not disease.strip():
+        return []
+    disease_lower = disease.strip().lower()
+
+    # 1. Exact match in aliases
+    if disease_lower in CATEGORY_ALIASES:
+        category_key = CATEGORY_ALIASES[disease_lower]
+        return DISEASE_CATEGORIES.get(category_key, [])
+
+    # 2. Substring match: user input contains alias key, or alias key contains user input
+    best_match = None
+    best_len = 0
+    for alias, category_key in CATEGORY_ALIASES.items():
+        if disease_lower in alias or alias in disease_lower:
+            if len(alias) > best_len:
+                best_match = category_key
+                best_len = len(alias)
+
+    if best_match:
+        return DISEASE_CATEGORIES.get(best_match, [])
+
+    return []
+
+
 # Scoring weights by scenario
 SCENARIO_WEIGHTS = {
     "research": {  # 基金/SCI scenario
