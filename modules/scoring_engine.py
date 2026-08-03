@@ -13,7 +13,8 @@ from config import SCENARIO_WEIGHTS, SCORE_GRADES, DIMENSION_MAX, ARCHETYPE_MODI
 class ScoringEngine:
     """Evaluate a target gene across multiple dimensions and produce a total score."""
 
-    def __init__(self, scenario: str = "general", custom_weights: dict = None):
+    def __init__(self, scenario: str = "general", custom_weights: dict = None,
+                 gene_symbol: str = "", disease: str = ""):
         """
         Initialize with a scenario that determines dimension weights.
 
@@ -28,6 +29,8 @@ class ScoringEngine:
                             When provided, archetype adjustment is skipped.
         """
         self.scenario = scenario
+        self.gene_symbol = gene_symbol
+        self.disease = disease
         base_weights = SCENARIO_WEIGHTS.get(scenario, SCENARIO_WEIGHTS["general"])
         self.custom_weights_provided = custom_weights is not None and len(custom_weights) > 0
 
@@ -143,7 +146,15 @@ class ScoringEngine:
         total_score = round(total_score * 100, 1)
 
         grade, grade_text = self._assign_grade(total_score)
-        recommendation = self._generate_recommendation(total_score, dim_scores, archetype, evidence)
+
+        # Try LLM-generated assessment first; fall back to template
+        recommendation = self._try_llm_recommendation(
+            evidence, dim_scores, total_score, grade, grade_text, archetype
+        )
+        if recommendation is None:
+            recommendation = self._generate_recommendation(
+                total_score, dim_scores, archetype, evidence
+            )
 
         return {
             "scores": dim_scores,
@@ -424,6 +435,30 @@ class ScoringEngine:
             if lo <= total < hi:
                 return grade, text
         return "E", "不推荐 — 缺乏关键支持或风险较高"
+
+    def _try_llm_recommendation(
+        self, evidence: dict, dim_scores: dict, total_score: float,
+        grade: str, grade_text: str, archetype: str,
+    ) -> Optional[str]:
+        """Attempt LLM-generated assessment; return None if unavailable/failed."""
+        try:
+            from modules.llm_assessor import LLMAssessor
+            assessor = LLMAssessor()
+            if not assessor.available:
+                return None
+            return assessor.generate_assessment(
+                gene_symbol=self.gene_symbol,
+                disease=self.disease,
+                evidence=evidence,
+                scores={"scores": dim_scores, "dimension_max": DIMENSION_MAX},
+                total_score=total_score,
+                grade=grade,
+                grade_text=grade_text,
+                archetype=archetype,
+                scenario=self.scenario,
+            )
+        except Exception:
+            return None
 
     def _generate_recommendation(self, total: float, scores: dict,
                                   archetype: str = "balanced",

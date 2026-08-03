@@ -73,7 +73,8 @@ def run_assessment(
     )
 
     # ── Step 3: Score ────────────────────────────────────────────────────
-    engine = ScoringEngine(scenario=scenario)
+    engine = ScoringEngine(scenario=scenario,
+                           gene_symbol=gene_info.symbol, disease=disease)
     result = engine.score(evidence)
 
     # ── Step 4: Build return dict ────────────────────────────────────────

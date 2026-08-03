@@ -40,7 +40,8 @@ def main():
         """),
     )
     parser.add_argument("--gene", "-g", required=True, help="靶点基因符号 (e.g. EGFR, HER2, KRAS)")
-    parser.add_argument("--disease", "-d", required=True, help="疾病/癌种名称 (e.g. NSCLC, Breast Cancer)")
+    parser.add_argument("--disease", "-d", required=True, nargs="+",
+                        help="疾病/癌种名称 (e.g. NSCLC, Breast Cancer)")
     parser.add_argument(
         "--scenario", "-s",
         default="general",
@@ -70,6 +71,7 @@ def main():
     )
 
     args = parser.parse_args()
+    args.disease = " ".join(args.disease)  # normalize nargs='+' list back to string
 
     # ------------------------------------------------------------------
     # Step 1: Resolve gene symbol
@@ -143,7 +145,8 @@ def main():
     if not args.quiet:
         print(f"📊 多维评分 ...", end=" ", flush=True)
 
-    engine = ScoringEngine(scenario=args.scenario, custom_weights=custom_weights)
+    engine = ScoringEngine(scenario=args.scenario, custom_weights=custom_weights,
+                           gene_symbol=args.gene, disease=args.disease)
     score_result = engine.score(evidence)
 
     if not args.quiet:

@@ -178,7 +178,9 @@ if submitted:
             )
 
             # Step 3: Score
-            engine = ScoringEngine(scenario=scenario)
+            engine = ScoringEngine(scenario=scenario,
+                                    gene_symbol=target_symbol,
+                                    disease=disease_input.strip())
             score_result = engine.score(evidence)
 
             # Step 4: Generate report

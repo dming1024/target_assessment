@@ -475,6 +475,25 @@ ARCHETYPE_MODIFIERS = {
     "balanced": {},
 }
 
+# ── LLM-based assessment ──────────────────────────────────────────────
+# When enabled, the scoring engine uses an LLM to generate comprehensive,
+# evidence-aware assessment reports instead of template-based recommendations.
+# Uses OpenAI-compatible API (DeepSeek, OpenAI, Claude proxy, local models, etc.)
+
+LLM_ENABLED = os.getenv("LLM_ENABLED", "").lower() in ("true", "1", "yes")
+LLM_API_KEY = os.getenv("LLM_API_KEY", "")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1")
+LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-chat")
+LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "30"))
+LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
+LLM_LANGUAGE = os.getenv("LLM_LANGUAGE", "zh")  # "zh" for Chinese, "en" for English
+
+
+def is_llm_available() -> bool:
+    """Check whether LLM assessment is configured and ready."""
+    return bool(LLM_ENABLED and LLM_API_KEY and LLM_MODEL)
+
+
 # Gene alias cache (common aliases - will be supplemented by mygene.info)
 GENE_ALIAS_CACHE = {
     "ERBB2": "ERBB2",
