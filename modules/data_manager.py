@@ -17,6 +17,7 @@ from modules.chembl_client import ChemblClient
 from modules.clinicaltrials_client import ClinicaltrialsClient
 from modules.depmap_module import DepMapModule
 from modules.tcga_module import TCGAModule
+from modules.offline_provider import OfflineProvider
 from config import EFO_DISEASE_MAP
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,9 @@ class DataManager:
         self._ct: Optional[ClinicaltrialsClient] = None
         self._depmap: Optional[DepMapModule] = None
         self._tcga: Optional[TCGAModule] = None
+        self._offline: Optional[OfflineProvider] = None
+        self._offline_checked: bool = False
+        self._offline_available: bool = False
 
     @property
     def ot(self) -> OpentargetsClient:
@@ -70,6 +74,12 @@ class DataManager:
         if self._tcga is None:
             self._tcga = TCGAModule()
         return self._tcga
+
+    @property
+    def offline(self) -> OfflineProvider:
+        if self._offline is None:
+            self._offline = OfflineProvider()
+        return self._offline
 
     def collect_evidence(
         self,
@@ -109,7 +119,30 @@ class DataManager:
     def _build_from_real_sources(
         self, gene_symbol: str, disease: str, ensembl_id: str
     ) -> dict:
-        """Build evidence dict from real APIs and local data."""
+        """Build evidence dict from real APIs and local data.
+
+        Uses offline SQLite when available (fast path <1s),
+        falling back to live APIs on miss or when DB is absent.
+        """
+        # Lazy check offline availability once
+        if not self._offline_checked:
+            self._offline_available = self.offline.is_available()
+            self._offline_checked = True
+
+        if self._offline_available:
+            try:
+                return self._build_from_offline(gene_symbol, disease, ensembl_id)
+            except Exception as e:
+                logger.warning(
+                    f"Offline query failed ({e}), falling back to live APIs"
+                )
+
+        return self._build_from_live_apis(gene_symbol, disease, ensembl_id)
+
+    def _build_from_live_apis(
+        self, gene_symbol: str, disease: str, ensembl_id: str
+    ) -> dict:
+        """Build evidence dict from live APIs and local file modules."""
         sources = []
 
         # --- Open Targets ---
@@ -256,6 +289,142 @@ class DataManager:
             "data_sources": {"real_sources": sources},
         }
 
+    def _build_from_offline(
+        self, gene_symbol: str, disease: str, ensembl_id: str
+    ) -> dict:
+        """Build evidence dict entirely from offline SQLite."""
+        sources = []
+
+        # Resolve gene alias to official symbol + Ensembl ID
+        resolved = self.offline.resolve_gene(gene_symbol)
+        if resolved:
+            gene_symbol = resolved[0]
+            if not ensembl_id:
+                ensembl_id = resolved[1] or ""
+
+        efo_id = self._resolve_efo_id(disease)
+
+        # Open Targets
+        ot_result = self.offline.query_ot(ensembl_id, efo_id) if ensembl_id and efo_id else {}
+        if ot_result:
+            sources.append(f"Open Targets (offline, {ot_result.get('opentargets_score', 0):.3f})")
+
+        # ChEMBL
+        chembl_result = self.offline.query_chembl(gene_symbol)
+        sources.append(f"ChEMBL (offline, approved={chembl_result.get('approved_drugs', 0)})")
+
+        # Clinical competition (derived from ChEMBL + OT, no live CT.gov call)
+        ct_result = self.offline.query_clinical_competition(gene_symbol, ensembl_id, efo_id)
+        sources.append(f"ClinicalTrials (offline, {ct_result.get('active_clinical_trials', 0)} trials)")
+
+        # DepMap
+        depmap_result = self.offline.query_depmap(gene_symbol, disease)
+        sources.append(f"DepMap (offline, dep={depmap_result.get('target_cancer_dependency', 'N/A')})")
+
+        # TCGA
+        tcga_expr = self.offline.query_tcga_expr(gene_symbol, disease)
+        tcga_mut = self.offline.query_tcga_mut(gene_symbol, disease)
+        sources.append(f"TCGA (offline, expr={tcga_expr.get('tumor_expression', 'N/A')})")
+
+        # --- Build evidence blocks (identical structure to live path) ---
+
+        disease_relevance = {
+            "target_cancer_overexpression": tcga_expr.get(
+                "tumor_expression",
+                self._infer_overexpression(ot_result, tcga_mut),
+            ),
+            "prognostic_associated": tcga_mut.get("prognostic_associated", False),
+            "mutation_cnv_frequency": tcga_mut.get("mutation_cnv_frequency", 0.0),
+            "opentargets_association": ot_result.get("opentargets_association", False),
+            "literature_level": self._infer_literature_level(ot_result),
+            "opentargets_score": ot_result.get("opentargets_score", 0.0),
+            "tcga_mutation_freq": tcga_mut.get("tcga_mutation_freq", 0.0),
+            "tcga_cnv_amp_freq": tcga_mut.get("tcga_cnv_amp_freq", 0.0),
+        }
+
+        expression = {
+            "tumor_expression": tcga_expr.get("tumor_expression", "unknown"),
+            "tumor_normal_diff": tcga_expr.get("tumor_normal_diff", "unknown"),
+            "protein_evidence": tcga_expr.get("protein_evidence", False),
+            "tissue_specificity": tcga_expr.get("tissue_specificity", "unknown"),
+            "tcga_median_tpm": tcga_expr.get("tcga_median_tpm"),
+            "tcga_log2fc": tcga_expr.get("tcga_log2fc"),
+        }
+
+        dependency = {
+            "target_cancer_dependency": depmap_result.get("target_cancer_dependency", "unknown"),
+            "pan_cancer_rank": depmap_result.get("pan_cancer_rank", "unknown"),
+            "is_common_essential": depmap_result.get("is_common_essential", False),
+            "mutation_conditioned_dep": depmap_result.get("mutation_conditioned_dep", False),
+            "depmap_mean_score": depmap_result.get("depmap_mean_score"),
+            "depmap_percentile": depmap_result.get("depmap_percentile"),
+        }
+
+        mechanism = {
+            "relevant_pathway_count": self._count_pathways(ot_result, chembl_result),
+            "mechanism_strength": self._infer_mechanism_strength(ot_result, chembl_result),
+            "connects_to_disease_hallmarks": ot_result.get("opentargets_score", 0) > 0.1 or chembl_result.get("approved_drugs", 0) > 0,
+            "genetic_association_score": ot_result.get("genetic_association_score", 0.0),
+            "somatic_mutation_score": ot_result.get("somatic_mutation_score", 0.0),
+        }
+
+        druggability = {
+            "approved_drugs": chembl_result.get("approved_drugs", 0),
+            "clinical_candidates": chembl_result.get("clinical_candidates", 0),
+            "active_compounds": chembl_result.get("active_compounds", 0),
+            "modality_fit": chembl_result.get("modality_fit", "unknown"),
+            "chembl_target_id": chembl_result.get("chembl_target_id"),
+        }
+
+        safety = {
+            "normal_tissue_risk": self._infer_normal_risk(tcga_expr, depmap_result),
+            "is_common_essential": depmap_result.get("is_common_essential", False),
+            "critical_organ_expression": [],
+        }
+
+        clinical_competition = {
+            "approved_drugs_count": ct_result.get("approved_drugs_count", 0),
+            "active_clinical_trials": ct_result.get("active_clinical_trials", 0),
+            "differentiation_opportunity": ct_result.get("differentiation_opportunity", "unknown"),
+        }
+
+        # ── Drug-based evidence boosts ────────────────────────────────────
+        # When a target has approved / clinical-stage drugs, these override
+        # missing or weak cancer-centric evidence for non-oncology targets.
+        approved = druggability.get("approved_drugs", 0) or 0
+        clinical = druggability.get("clinical_candidates", 0) or 0
+
+        if approved > 0:
+            # Having approved drugs IS definitive proof of disease relevance
+            disease_relevance["opentargets_association"] = True
+            if approved >= 5:
+                disease_relevance["literature_level"] = "high"
+            else:
+                disease_relevance["literature_level"] = "moderate"
+
+        # Fix clinical-trial count when OT data is unavailable:
+        # approved drugs imply active trials are running somewhere.
+        if clinical_competition["active_clinical_trials"] == 0 and approved > 0:
+            clinical_competition["active_clinical_trials"] = max(int(approved * 1.5), 3)
+
+        target_overview = {
+            "protein_class": "",
+            "subcellular_location": "",
+            "function_summary": "",
+        }
+
+        return {
+            "target_overview": target_overview,
+            "disease_relevance": disease_relevance,
+            "expression": expression,
+            "dependency": dependency,
+            "mechanism": mechanism,
+            "druggability": druggability,
+            "safety": safety,
+            "clinical_competition": clinical_competition,
+            "data_sources": {"real_sources": sources},
+        }
+
     # ------------------------------------------------------------------
     # Helpers: infer qualitative fields from quantitative API results
     # ------------------------------------------------------------------
@@ -282,8 +451,9 @@ class DataManager:
             return "low"
         return "unknown"
 
-    def _count_pathways(self, ot_result: dict) -> int:
-        """Count pathways with evidence from Open Targets datatype scores."""
+    def _count_pathways(self, ot_result: dict, chembl_result: dict = None) -> int:
+        """Count pathways with evidence from Open Targets datatype scores
+        and ChEMBL drug data."""
         pathway_count = 0
         if ot_result.get("genetic_association_score", 0) > 0.01:
             pathway_count += 1
@@ -293,10 +463,22 @@ class DataManager:
             pathway_count += 1
         if ot_result.get("known_drug_score", 0) > 0.01:
             pathway_count += 1
+        # Drug data is independent pathway evidence (drug approval = mechanism is real)
+        if chembl_result:
+            if chembl_result.get("approved_drugs", 0) > 0:
+                pathway_count += 1
+            if chembl_result.get("clinical_candidates", 0) > 0:
+                pathway_count += 1
         return pathway_count
 
-    def _infer_mechanism_strength(self, ot_result: dict) -> str:
-        """Infer mechanism strength from overall Open Targets association."""
+    def _infer_mechanism_strength(self, ot_result: dict, chembl_result: dict = None) -> str:
+        """Infer mechanism strength from drug data (strongest signal) and Open Targets."""
+        # Drug approval is the ultimate mechanism validation
+        if chembl_result and chembl_result.get("approved_drugs", 0) > 0:
+            return "well_established"
+        if chembl_result and chembl_result.get("clinical_candidates", 0) > 0:
+            return "partially_established"
+        # Fall back to Open Targets
         score = ot_result.get("opentargets_score", 0)
         if score > 0.5:
             return "well_established"

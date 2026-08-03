@@ -7,60 +7,150 @@ Multi-dimensional scoring system that evaluates target genes across
 
 from typing import Dict, List, Optional, Tuple
 
-from config import SCENARIO_WEIGHTS, SCORE_GRADES, DIMENSION_MAX
+from config import SCENARIO_WEIGHTS, SCORE_GRADES, DIMENSION_MAX, ARCHETYPE_MODIFIERS
 
 
 class ScoringEngine:
     """Evaluate a target gene across multiple dimensions and produce a total score."""
 
-    def __init__(self, scenario: str = "general"):
+    def __init__(self, scenario: str = "general", custom_weights: dict = None):
         """
         Initialize with a scenario that determines dimension weights.
 
         Args:
             scenario: One of 'research', 'drug_development', 'adc',
                       'small_molecule', 'general'
+            custom_weights: Optional dict mapping dimension names to weights
+                            (e.g. {"disease_relevance": 0.25, "expression": 0.20, ...}).
+                            Specified dimensions override scenario defaults;
+                            unspecified dimensions keep scenario values.
+                            All weights are normalized to sum to 1.0.
+                            When provided, archetype adjustment is skipped.
         """
         self.scenario = scenario
-        self.weights = SCENARIO_WEIGHTS.get(scenario, SCENARIO_WEIGHTS["general"])
+        base_weights = SCENARIO_WEIGHTS.get(scenario, SCENARIO_WEIGHTS["general"])
+        self.custom_weights_provided = custom_weights is not None and len(custom_weights) > 0
+
+        if self.custom_weights_provided:
+            merged = dict(base_weights)
+            for dim, w in custom_weights.items():
+                if dim in merged:
+                    merged[dim] = float(w)
+                else:
+                    raise ValueError(
+                        f"Unknown dimension '{dim}'. Valid dimensions: {list(base_weights.keys())}"
+                    )
+            # Normalize to sum to 1.0
+            total = sum(merged.values())
+            if total <= 0:
+                raise ValueError("Sum of weights must be > 0")
+            self.weights = {k: round(v / total, 4) for k, v in merged.items()}
+        else:
+            self.weights = base_weights
+
+    # ── Archetype classification ──────────────────────────────────────
+
+    def _classify_archetype(self, disease: dict, expression: dict,
+                            dependency: dict, druggability: dict,
+                            mechanism: dict) -> str:
+        """
+        Classify a target into one of five archetypes based on evidence pattern.
+
+        Priority order (first match wins — biological signals before drug knowledge):
+          1. expression_driven — strongly overexpressed (the most direct biological signal)
+          2. dependency_driven — strong, selective CRISPR dependency
+          3. mutation_driven   — non-trivial point-mutation frequency
+          4. drug_target       — already has approved drugs (pharma-validated)
+          5. balanced          — no single signal dominates
+
+        Returns one of: expression_driven, dependency_driven, mutation_driven,
+                        drug_target, balanced
+        """
+        overexpression = expression.get("tumor_expression", "")
+        dep_level = dependency.get("target_cancer_dependency", "")
+        dep_pct = dependency.get("depmap_percentile", 50) or 50
+        mutation_freq = disease.get("tcga_mutation_freq", 0) or 0
+        approved = druggability.get("approved_drugs", 0) or 0
+
+        # 1. Expression-driven: the cleanest biological signal
+        if overexpression in ("high",):
+            return "expression_driven"
+
+        # 2. Dependency-driven: strong & selective DepMap signal
+        if dep_level == "strong" and dep_pct < 10:
+            return "dependency_driven"
+
+        # 3. Mutation-driven: non-trivial point-mutation frequency
+        #    (CNV amplification is excluded — it's globally high and non-specific)
+        if mutation_freq > 0.02:
+            return "mutation_driven"
+
+        # 4. Drug target: pharma-validated, biology signal unclear in our data
+        if approved > 0:
+            return "drug_target"
+
+        # 5. Fallback
+        return "balanced"
+
+    # ── Scoring ────────────────────────────────────────────────────────
 
     def score(self, evidence: dict) -> dict:
         """
         Compute dimension scores, total, grade, and recommendation from evidence.
 
-        Args:
-            evidence: Dictionary with per-dimension evidence blocks.
-                      Keys match the dimension names.
-
-        Returns:
-            Dict with scores, total_score, grade, grade_text, recommendation
+        Dimension weights are adjusted by target archetype so that e.g.
+        mutation-driven targets aren't penalised for low expression.
         """
+        disease = evidence.get("disease_relevance", {})
+        expression = evidence.get("expression", {})
+        drug = evidence.get("druggability", {})
+        dep = evidence.get("dependency", {})
+
         dim_scores = {
-            "disease_relevance": self._score_disease_relevance(evidence.get("disease_relevance", {})),
-            "expression": self._score_expression(evidence.get("expression", {})),
-            "dependency": self._score_dependency(evidence.get("dependency", {})),
+            "disease_relevance": self._score_disease_relevance(disease),
+            "expression": self._score_expression(expression),
+            "dependency": self._score_dependency(dep),
             "mechanism": self._score_mechanism(evidence.get("mechanism", {})),
-            "druggability": self._score_druggability(evidence.get("druggability", {})),
+            "druggability": self._score_druggability(drug),
             "safety": self._score_safety(evidence.get("safety", {})),
             "clinical_competition": self._score_competition(evidence.get("clinical_competition", {})),
             "scenario_fit": self._score_scenario_fit(evidence),
         }
+
+        # ── Apply archetype adjustment (skip if user provided custom weights) ─
+        mech = evidence.get("mechanism", {})
+        archetype = self._classify_archetype(disease, expression, dep, drug, mech)
+        if self.custom_weights_provided:
+            adjusted_weights = dict(self.weights)
+        else:
+            modifiers = ARCHETYPE_MODIFIERS.get(archetype, {})
+            adjusted_weights = dict(self.weights)
+            for dim, delta in modifiers.items():
+                if dim in adjusted_weights:
+                    adjusted_weights[dim] = max(0.03, min(0.35,
+                        adjusted_weights[dim] + delta))
+            # Normalise so weights sum to 1
+            total_w = sum(adjusted_weights.values())
+            if total_w > 0 and abs(total_w - 1.0) > 0.001:
+                adjusted_weights = {k: v / total_w for k, v in adjusted_weights.items()}
 
         # Scale each dimension to fraction of its max, weight, then scale to 100
         total_score = 0.0
         for k in dim_scores:
             dim_max = DIMENSION_MAX.get(k, 1)
             fraction = dim_scores[k] / dim_max if dim_max > 0 else 0
-            total_score += fraction * self.weights.get(k, 0)
+            total_score += fraction * adjusted_weights.get(k, 0)
         total_score = round(total_score * 100, 1)
 
         grade, grade_text = self._assign_grade(total_score)
-        recommendation = self._generate_recommendation(total_score, dim_scores)
+        recommendation = self._generate_recommendation(total_score, dim_scores, archetype, evidence)
 
         return {
             "scores": dim_scores,
             "dimension_max": DIMENSION_MAX,
             "weights": self.weights,
+            "adjusted_weights": adjusted_weights,
+            "archetype": archetype,
             "total_score": total_score,
             "grade": grade,
             "grade_text": grade_text,
@@ -335,7 +425,9 @@ class ScoringEngine:
                 return grade, text
         return "E", "不推荐 — 缺乏关键支持或风险较高"
 
-    def _generate_recommendation(self, total: float, scores: dict) -> str:
+    def _generate_recommendation(self, total: float, scores: dict,
+                                  archetype: str = "balanced",
+                                  evidence: dict = None) -> str:
         """Generate a brief natural-language recommendation."""
         grade, _ = self._assign_grade(total)
 
@@ -366,6 +458,34 @@ class ScoringEngine:
             strengths.append("安全性窗口较好")
         elif scores["safety"] < 3:
             weaknesses.append("安全性风险较高，需重点关注")
+
+        # ── Archetype-aware recommendations ───────────────────────────
+        if archetype == "drug_target":
+            approved = 0
+            if evidence:
+                approved = evidence.get("druggability", {}).get("approved_drugs", 0) or 0
+            if grade in ("A", "B"):
+                return (
+                    f"该靶点为临床充分验证的成熟药靶（{approved}个已批准药物）。"
+                    f"{'; '.join(strengths)}。"
+                    f"新药研发建议聚焦：更高靶点选择性、差异化安全性窗口、"
+                    f"或新作用机制的再创新策略。"
+                )
+            elif grade == "C":
+                return (
+                    f"该靶点已有{approved}个已批准药物，属于已验证的药靶，"
+                    f"但部分非临床维度的证据信号较弱（如疾病表达/依赖性数据）。"
+                    f"这并非否定该靶点的临床价值，而是提示当前评估数据以癌症生物学为主，"
+                    f"对该类已验证的非癌/跨适应症靶点的区分度有限。"
+                    f"如需差异化开发，建议关注选择性优化或新适应症拓展。"
+                )
+            else:  # D, E
+                return (
+                    f"该靶点虽有{approved}个已批准药物的临床验证，"
+                    f"但在当前评估场景下癌症生物学证据不充分（注意：这不代表靶点本身缺乏价值）。"
+                    f"该靶点更适合作为'已验证靶点的再创新'而非'新靶点发现'来评估。"
+                    f"建议使用更聚焦的场景（如 drug_development）或提供具体适应症以获得更准确的评估。"
+                )
 
         if grade == "A":
             return (

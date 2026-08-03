@@ -2,16 +2,16 @@
 Gene Symbol Resolver - 基因名标准化模块
 
 Standardizes user-input gene symbols to official HGNC symbols using:
-1. Local alias cache
-2. mygene.info API
+1. Offline SQLite DB (primary, no network)
+2. mygene.info API (fallback, if DB unavailable)
+3. Local alias cache (last resort)
 """
 
 import logging
 from typing import List, Optional
 
-import httpx
-
 from config import MYGENE_API, GENE_ALIAS_CACHE
+from modules.offline_provider import OfflineProvider
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +57,12 @@ class GeneResolver:
 
     def __init__(self, timeout: float = 10.0):
         self.timeout = timeout
-        self._http_client: Optional[httpx.Client] = None
+        self._http_client = None
 
     @property
-    def http_client(self) -> httpx.Client:
+    def http_client(self):
         if self._http_client is None:
+            import httpx
             self._http_client = httpx.Client(timeout=self.timeout)
         return self._http_client
 
@@ -76,8 +77,9 @@ class GeneResolver:
 
         Resolution order:
         1. Local alias cache lookup
-        2. mygene.info API query
-        3. Return as-is with 'unresolved' status if all else fails
+        2. Offline SQLite DB (if available)
+        3. mygene.info API query (network)
+        4. Return as-is with 'unresolved' status if all else fails
         """
         gene_input = gene_input.strip()
 
@@ -88,16 +90,32 @@ class GeneResolver:
                 status="empty_input",
             )
 
-        # Step 1: Normalize via local cache, but also query API for Ensembl ID
+        # Step 1: Check local alias cache for quick normalization
         upper_input = gene_input.upper()
         official_symbol = GENE_ALIAS_CACHE.get(upper_input, None)
 
-        # Step 2: Query mygene.info (always try, even for cached symbols —
-        #         we need the Ensembl gene ID for Open Targets API calls)
+        # Step 2: Try offline SQLite DB (fast, no network)
+        try:
+            provider = OfflineProvider()
+            if provider.is_available():
+                resolved = provider.resolve_gene(gene_input)
+                if resolved:
+                    sym, ensembl, full_name, synonyms_str = resolved
+                    return GeneInfo(
+                        input_symbol=gene_input,
+                        symbol=sym,
+                        ensembl_id=ensembl,
+                        full_name=full_name,
+                        synonyms=self._parse_synonyms(synonyms_str),
+                        status="resolved_offline",
+                    )
+        except Exception as e:
+            logger.debug(f"Offline gene resolution failed for '{gene_input}': {e}")
+
+        # Step 3: Query mygene.info (network fallback)
         try:
             result = self._query_mygene(gene_input)
             if result:
-                # If local cache has a different official symbol, prefer the cache
                 if official_symbol and official_symbol != result.symbol.upper():
                     result.symbol = official_symbol
                 result.status = (
@@ -107,7 +125,7 @@ class GeneResolver:
         except Exception as e:
             logger.warning(f"mygene.info query failed for '{gene_input}': {e}")
 
-        # Step 3: Fall back to local cache only (no Ensembl ID available)
+        # Step 4: Fall back to local cache only (no Ensembl ID available)
         if official_symbol:
             return GeneInfo(
                 input_symbol=gene_input,
@@ -116,15 +134,30 @@ class GeneResolver:
                 status="resolved_local",
             )
 
-        # Step 3: Return as-is with unresolved status
+        # Step 5: Return as-is with unresolved status
         return GeneInfo(
             input_symbol=gene_input,
             symbol=upper_input,
             status="unresolved",
         )
 
+    @staticmethod
+    def _parse_synonyms(synonyms_json: str) -> list:
+        """Parse synonyms from a JSON array string. Returns empty list on failure."""
+        if not synonyms_json or synonyms_json in ("[]", ""):
+            return []
+        try:
+            import json
+            parsed = json.loads(synonyms_json)
+            if isinstance(parsed, list):
+                return parsed
+        except (json.JSONDecodeError, TypeError):
+            pass
+        return []
+
     def _query_mygene(self, gene_input: str) -> Optional[GeneInfo]:
         """Query mygene.info API for gene information."""
+        import httpx
         url = f"{MYGENE_API}/query"
         params = {
             "q": gene_input,

@@ -9,10 +9,12 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import sys
 import textwrap
 from datetime import datetime
+from pathlib import Path
 
 # Ensure project root is on path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -33,6 +35,8 @@ def main():
               python run.py --gene EGFR --disease NSCLC
               python run.py --gene CLDN18 --disease "Gastric Cancer" --scenario adc
               python run.py --gene BRCA1 --disease "Ovarian Cancer" --scenario research -o ./results
+              python run.py --gene KRAS --disease NSCLC -w '{"disease_relevance": 0.25, "expression": 0.2, "dependency": 0.25}'
+              python run.py --gene EGFR --disease NSCLC --weights ./my_weights.json
         """),
     )
     parser.add_argument("--gene", "-g", required=True, help="靶点基因符号 (e.g. EGFR, HER2, KRAS)")
@@ -55,6 +59,15 @@ def main():
         help="输出目录 (default: outputs/{reports,tables}/)",
     )
     parser.add_argument("--quiet", "-q", action="store_true", help="静默模式，只输出关键信息")
+    parser.add_argument(
+        "--weights", "-w",
+        default=None,
+        help=(
+            "自定义维度权重。可以是 JSON 文件路径或 JSON 字符串。"
+            "指定部分维度即可，其余维度保持场景默认值。"
+            "例: --weights '{\"disease_relevance\": 0.25, \"expression\": 0.20, \"dependency\": 0.20}'"
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -96,12 +109,41 @@ def main():
         print(f"✓ ({len(sources)} data sources)")
 
     # ------------------------------------------------------------------
+    # Step 2.5: Parse custom weights (if provided)
+    # ------------------------------------------------------------------
+    custom_weights = None
+    if args.weights:
+        raw = args.weights.strip()
+        # Try as file path first, then as inline JSON string
+        weights_path = Path(raw)
+        if weights_path.is_file():
+            try:
+                custom_weights = json.loads(weights_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as e:
+                print(f"\n❌ 权重文件 JSON 解析失败: {e}")
+                sys.exit(1)
+        else:
+            try:
+                custom_weights = json.loads(raw)
+            except json.JSONDecodeError:
+                print(f"\n❌ --weights 参数格式错误。请提供有效的 JSON 字符串或 JSON 文件路径。")
+                print(f"   示例: --weights '{{\"disease_relevance\": 0.25, \"expression\": 0.20, \"dependency\": 0.20}}'")
+                sys.exit(1)
+
+        if not isinstance(custom_weights, dict):
+            print(f"\n❌ --weights 必须是一个 JSON 对象 (dict)，而不是数组或其他类型。")
+            sys.exit(1)
+
+        if not args.quiet:
+            print(f"⚖️  自定义权重: {custom_weights}")
+
+    # ------------------------------------------------------------------
     # Step 3: Score
     # ------------------------------------------------------------------
     if not args.quiet:
         print(f"📊 多维评分 ...", end=" ", flush=True)
 
-    engine = ScoringEngine(scenario=args.scenario)
+    engine = ScoringEngine(scenario=args.scenario, custom_weights=custom_weights)
     score_result = engine.score(evidence)
 
     if not args.quiet:
@@ -155,9 +197,18 @@ def main():
     print("=" * 60)
     print(f"  基因: {target_symbol} ({gene_info.full_name})")
     print(f"  疾病: {args.disease.strip()}")
-    print(f"  场景: {args.scenario}")
+    print(f"  场景: {args.scenario}{' (自定义权重)' if custom_weights else ''}")
     print(f"  总分: {score_result['total_score']}/100  Grade: {score_result['grade']}")
     print(f"  结论: {score_result['recommendation']}")
+    archetype = score_result.get("archetype", "balanced")
+    archetype_labels = {
+        "mutation_driven": "突变驱动型",
+        "expression_driven": "表达驱动型",
+        "dependency_driven": "依赖驱动型",
+        "drug_target": "药物已验证型",
+        "balanced": "均衡型",
+    }
+    print(f"  靶点原型: {archetype_labels.get(archetype, archetype)}")
     print("-" * 60)
 
     # Dimension scores

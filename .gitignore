@@ -19,6 +19,16 @@ data/cache/
 .venv/
 venv/
 
+# Offline database (large binary, built per-machine)
+data/processed/target_assessment.db*
+
+# Runtime logs & outputs
+logs/
+results/
+
+# Custom weights (user-specific)
+my_weights.json
+
 # OS
 .DS_Store
 Thumbs.db

@@ -11,6 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
+OFFLINE_DB = PROCESSED_DIR / "target_assessment.db"
 CACHE_DIR = DATA_DIR / "cache"
 TEMPLATES_DIR = BASE_DIR / "templates"
 OUTPUTS_DIR = BASE_DIR / "outputs"
@@ -362,54 +363,54 @@ def resolve_disease_categories(disease: str) -> list:
 # Scoring weights by scenario
 SCENARIO_WEIGHTS = {
     "research": {  # 基金/SCI scenario
-        "disease_relevance": 0.20,
-        "expression": 0.15,
-        "dependency": 0.10,
-        "mechanism": 0.20,
-        "druggability": 0.10,
-        "safety": 0.10,
-        "clinical_competition": 0.10,
-        "scenario_fit": 0.05,
+        "disease_relevance": 0.24,
+        "expression": 0.05,
+        "dependency": 0.12,
+        "mechanism": 0.24,
+        "druggability": 0.12,
+        "safety": 0.05,
+        "clinical_competition": 0.12,
+        "scenario_fit": 0.06,
     },
     "drug_development": {  # Enterprise drug R&D scenario
-        "disease_relevance": 0.15,
-        "expression": 0.15,
-        "dependency": 0.15,
-        "mechanism": 0.10,
-        "druggability": 0.15,
-        "safety": 0.15,
-        "clinical_competition": 0.10,
-        "scenario_fit": 0.05,
+        "disease_relevance": 0.19,
+        "expression": 0.05,
+        "dependency": 0.19,
+        "mechanism": 0.13,
+        "druggability": 0.19,
+        "safety": 0.05,
+        "clinical_competition": 0.13,
+        "scenario_fit": 0.07,
     },
     "adc": {  # ADC-focused scenario
-        "disease_relevance": 0.10,
-        "expression": 0.25,
-        "dependency": 0.10,
-        "mechanism": 0.05,
-        "druggability": 0.20,
-        "safety": 0.20,
-        "clinical_competition": 0.05,
-        "scenario_fit": 0.05,
+        "disease_relevance": 0.16,
+        "expression": 0.05,
+        "dependency": 0.16,
+        "mechanism": 0.08,
+        "druggability": 0.33,
+        "safety": 0.05,
+        "clinical_competition": 0.08,
+        "scenario_fit": 0.09,
     },
     "small_molecule": {  # Small molecule scenario
-        "disease_relevance": 0.10,
-        "expression": 0.10,
-        "dependency": 0.15,
-        "mechanism": 0.15,
-        "druggability": 0.25,
-        "safety": 0.15,
-        "clinical_competition": 0.05,
-        "scenario_fit": 0.05,
+        "disease_relevance": 0.12,
+        "expression": 0.05,
+        "dependency": 0.18,
+        "mechanism": 0.18,
+        "druggability": 0.30,
+        "safety": 0.05,
+        "clinical_competition": 0.06,
+        "scenario_fit": 0.06,
     },
     "general": {  # Default balanced
-        "disease_relevance": 0.15,
-        "expression": 0.15,
-        "dependency": 0.15,
-        "mechanism": 0.15,
-        "druggability": 0.15,
-        "safety": 0.10,
-        "clinical_competition": 0.10,
-        "scenario_fit": 0.05,
+        "disease_relevance": 0.18,
+        "expression": 0.05,
+        "dependency": 0.18,
+        "mechanism": 0.18,
+        "druggability": 0.18,
+        "safety": 0.05,
+        "clinical_competition": 0.12,
+        "scenario_fit": 0.06,
     },
 }
 
@@ -432,6 +433,46 @@ DIMENSION_MAX = {
     "safety": 10,
     "clinical_competition": 10,
     "scenario_fit": 5,
+}
+
+# ── Target archetype classification ─────────────────────────────────────
+# Some targets are validated by mutation rather than expression (e.g. EGFR, KRAS),
+# others by overexpression (e.g. CLDN18, ERBB2), others by dependency (e.g. PRMT5).
+# The archetype system adjusts dimension weights so that a target isn't penalised
+# for being weak in a dimension that doesn't matter for its biology.
+
+# Archetype weight modifiers: deltas applied on top of SCENARIO_WEIGHTS.
+# Each archetype's deltas sum to 0 so total weight stays 1.0.
+ARCHETYPE_MODIFIERS = {
+    # Validated primarily by high mutation / CNV frequency; expression is secondary
+    "mutation_driven": {
+        "disease_relevance": +0.07,
+        "expression":         -0.08,
+        "dependency":         +0.02,
+        "safety":             -0.01,
+    },
+    # Validated primarily by tumor-selective overexpression; mutation is secondary
+    "expression_driven": {
+        "expression":         +0.07,
+        "disease_relevance":  -0.03,
+        "dependency":         -0.02,
+        "safety":             -0.02,
+    },
+    # Validated primarily by CRISPR / RNAi dependency; expression not required
+    "dependency_driven": {
+        "dependency":         +0.07,
+        "expression":         -0.05,
+        "mechanism":          -0.02,
+    },
+    # Already has approved drugs; clinical / druggability dimensions are proven
+    "drug_target": {
+        "druggability":       +0.05,
+        "clinical_competition": +0.02,
+        "expression":         -0.04,
+        "mechanism":          -0.03,
+    },
+    # No single signal dominates; use scenario weights unchanged
+    "balanced": {},
 }
 
 # Gene alias cache (common aliases - will be supplemented by mygene.info)
